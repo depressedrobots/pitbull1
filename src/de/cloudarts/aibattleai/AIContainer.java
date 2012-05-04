@@ -70,7 +70,7 @@ public class AIContainer {
 			
 			// send next action
 			System.out.println("sending action: " + action);
-			System.out.println(postAction(action));
+			postAction(action);
 			
 			// continue in loop
 		}

@@ -1,13 +1,18 @@
 package de.cloudarts.aibattleai;
 
+import java.awt.Point;
 import java.io.IOException;
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.Random;
 import java.util.Scanner;
 
 public class AIContainer {
 	
 	private static final long SLEEP_MILLIS = 200;
+        
+        private static final int GRID_COLUMNS = 7;
+        private static final int GRID_ROWS = 6;
 	
 	private String _playerName = "Wojtek";
 	private int _matchID = 0;
@@ -40,6 +45,11 @@ public class AIContainer {
 			}
 			
 			if( isDrawGame(lastGameStatusAnswerString) )
+			{
+				return;
+			}
+			
+			if( isGameWon(lastGameStatusAnswerString) )
 			{
 				return;
 			}
@@ -142,6 +152,8 @@ public class AIContainer {
 		}
 		
 	    System.out.println( "requestMatchStatus: received answer:" + r );
+            
+            visualizeGrid(r);
 	    
 	    return r;		
 	}
@@ -200,4 +212,138 @@ public class AIContainer {
 		
 		return false;
 	}
+
+	private boolean isGameWon(String answer_) {
+            String[] items = answer_.split(";");
+            String status = items[0];
+            
+            String last3Letters = status.substring(status.length()-3, status.length());
+            
+            if( last3Letters.equals("won") )
+            {
+                    return true;
+            }
+		
+            return false;
+	}
+
+    private void visualizeGrid(String r) {
+        // create GridArray
+        
+        String[] items = r.split(";");
+        
+        //first item is match status, second item is player names
+        //parse only actions
+        ArrayList<String> actions = new ArrayList<>();
+        for( int i = 2; i < items.length; i++ )
+        {
+            String item = items[i];
+            String[] subitems = item.split(":");
+            String player = subitems[0];
+            String action = subitems[1];    //first subitem is player number
+            actions.add(action);
+        }
+        
+        //create gridArray from actions
+        String[] gridArray = new String[GRID_COLUMNS * GRID_ROWS];
+        for( int i = 0; i < gridArray.length; i++ )
+        {
+            gridArray[i] = "-"; //initialize empty fields with "-"
+        }
+        
+        //fill gridArray with actions
+        int playerIndex = 0;
+        for( int i = 0; i < actions.size(); i++ )
+        {
+            int col = actionToColumn(actions.get(i));
+            int row = GRID_ROWS-1;      //start at the bottom
+            //work your way up until you hit an empty space
+            int gridIndex = coordsToIndex(col, row);
+            
+            try
+            {
+                while( !gridArray[gridIndex].equalsIgnoreCase("-") )
+                {
+                    row--;
+                    gridIndex = coordsToIndex(col, row);
+                }
+            }
+            catch(ArrayIndexOutOfBoundsException ex)
+            {
+                System.err.println("Impossible action found: " + ex);
+                return;
+            }
+            
+            String player1Symbol = "X";
+            String player2Symbol = "0";
+            
+            gridArray[gridIndex] = playerIndex == 0 ? player1Symbol : player2Symbol;
+            playerIndex++;
+            if( playerIndex > 1 )
+            {
+                playerIndex = 0;
+            }
+        }
+        
+        //print GridArray
+        int col = 0;
+        for( int i = 0; i < gridArray.length; i++ )
+        {
+            System.out.print("" + gridArray[i]);
+            col++;
+            if( col >= GRID_COLUMNS )
+            {
+                System.out.print("\n");
+                col = 0;
+            }
+        }
+        System.out.print("\n\n");
+    }
+    
+    private int actionToColumn(String action)
+    {
+        if( action.equalsIgnoreCase("a") )
+        {
+            return 0;
+        }
+        else if( action.equalsIgnoreCase("b") )
+        {
+            return 1;
+        }
+        else if( action.equalsIgnoreCase("c") )
+        {
+            return 2;
+        }
+        else if( action.equalsIgnoreCase("d") )
+        {
+            return 3;
+        }
+        else if( action.equalsIgnoreCase("e") )
+        {
+            return 4;
+        }
+        else if( action.equalsIgnoreCase("f") )
+        {
+            return 5;
+        }
+        else if( action.equalsIgnoreCase("g") )
+        {
+            return 6;
+        }
+        
+        return -1;
+    }
+    
+    private Point indexToCoords(int index)
+    {
+        int x = index % GRID_COLUMNS;
+        int y = index / GRID_COLUMNS;
+        
+        return new Point(x, y);
+    }
+    
+    private int coordsToIndex(int x, int y)
+    {
+        return x + (y * GRID_COLUMNS);
+    }
 }

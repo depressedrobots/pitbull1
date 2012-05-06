@@ -3,6 +3,8 @@
  */
 package de.cloudarts.aibattleai;
 
+import java.util.Random;
+
 /**
  * @author W. A. Jurczyk
  *
@@ -14,7 +16,7 @@ public class Main {
 	 */
 	public static void main(String[] args) {
 		
-		String playerName = "Wojtek";
+		String playerName = "Wojtek"+(new Random().nextInt(100));
 		
 		if (args.length > 0)
 		{

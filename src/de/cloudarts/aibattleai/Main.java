@@ -3,8 +3,6 @@
  */
 package de.cloudarts.aibattleai;
 
-import java.util.Random;
-
 /**
  * @author W. A. Jurczyk
  *
@@ -16,14 +14,21 @@ public class Main {
 	 */
 	public static void main(String[] args) {
 		
-		String playerName = "Wojtek"+(new Random().nextInt(100));
+		//load all profiles
+		IAIProfile[] profiles = { new AIPitbull0(), new AIPitbull1() };		
+		
+		int profileIndex = 0;
 		
 		if (args.length > 0)
 		{
-			playerName = args[0];
+			profileIndex = Integer.valueOf(args[0]);
+			if( profileIndex < 0 || profileIndex >= profiles.length )
+			{
+				profileIndex = 0;
+			}
 		}
 		
-		AIContainer ai = new AIContainer(playerName);
+		AIContainer ai = new AIContainer(profiles[profileIndex]);
 		ai.start();
 	}
 

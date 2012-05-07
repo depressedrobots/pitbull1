@@ -1,29 +1,32 @@
 package de.cloudarts.aibattleai;
 
-import java.awt.Point;
 import java.io.IOException;
 import java.net.URL;
 import java.util.ArrayList;
-import java.util.Random;
 import java.util.Scanner;
 
 public class AIContainer {
 	
-	private static final long SLEEP_MILLIS = 200;
-        
-        private static final int GRID_COLUMNS = 7;
-        private static final int GRID_ROWS = 6;
-	
-	private String _playerName = "Wojtek";
+	private String _playerName = "Pitbull";
+	private String _opponentName = "opponent";
+	private int _playerNumber = 1;	// is the AI player1 or player 2?
+	private boolean _isStartPlayer = false;	// has the AI made the first move?
 	private int _matchID = 0;
 	private String _token = "";
 	
-	public AIContainer(String playerName_)
+	//which AI to use
+	private IAIProfile _profile = null;
+	
+	public AIContainer(IAIProfile profile_)
 	{
-		if( !playerName_.isEmpty() )
-		{
-			_playerName = playerName_;	
-		}		
+            _profile = profile_;
+            
+            if( _profile == null )
+            {
+            	System.err.println("Error! No AI profile passed!");
+            }
+            
+            _playerName = _profile.getProfileName();
 	}
 	
 	public void start()
@@ -39,6 +42,11 @@ public class AIContainer {
 			//get game status
 			String lastGameStatusAnswerString = requestMatchStatus();
 			
+			// get game status
+            int[] grid = createGrid(lastGameStatusAnswerString);
+            
+            visualizeGrid(grid);
+			
 			if( isErrorAnswer(lastGameStatusAnswerString) )
 			{
 				return;
@@ -49,8 +57,17 @@ public class AIContainer {
 				return;
 			}
 			
-			if( isGameWon(lastGameStatusAnswerString) )
+			int winNumber = isGameWon(lastGameStatusAnswerString);
+			if( winNumber != 0 )
 			{
+				if( winNumber == _playerNumber )
+				{
+					System.out.println("I've won!");
+				}
+				else
+				{
+					System.out.println(_opponentName + " has won...");
+				}
 				return;
 			}
 			
@@ -59,7 +76,7 @@ public class AIContainer {
 				//wait a sec, then try again
 				try 
 				{
-					Thread.sleep(SLEEP_MILLIS);
+					Thread.sleep(AITools.SLEEP_MILLIS);
 				} 
 				catch (InterruptedException e) 
 				{
@@ -69,14 +86,7 @@ public class AIContainer {
 			}
 			
 			//so it's my turn
-			
-			// get game status
-			
-			// compute next action
-			String[] letters = {"a", "b", "c", "d", "e", "f", "g"};
-			Random generator = new Random();
-			int actionIndex = generator.nextInt(7);
-			String action = letters[actionIndex];
+			String action = _profile.getNextAction(grid, _playerNumber);
 			
 			// send next action
 			System.out.println("sending action: " + action);
@@ -85,27 +95,136 @@ public class AIContainer {
 			// continue in loop
 		}
 	}
+        
+        private int[] createGrid(String answerString_)
+        {
+            int[] grid = new int[AITools.GRID_ROWS*AITools.GRID_COLUMNS];
+            
+            //initialize the grid with zeros
+            for( int i = 0; i < grid.length; i++ )
+            {
+            	grid[i] = 0;
+            }
+            
+            String[] items = answerString_.split(";");
+            
+            // extract opponent name
+            String playerNames = items[1];
+            int versusIndex = playerNames.indexOf(" vs ");
+            
+            if( versusIndex != -1 )
+            {
+            	String player1Name = playerNames.substring(0, versusIndex);
+            	String player2Name = playerNames.substring(versusIndex + 4);
+            	if( player1Name.equals(_playerName) )
+            	{
+            		_playerNumber = 1;
+            		_opponentName = player2Name;
+            	}
+            	else
+            	{
+            		_playerNumber = 2;
+            		_opponentName = player1Name;
+            	}
+            }
+            
+            //first item is match status, second item is player names
+            //parse only actions, so start with index 2
+            ArrayList<String> actions = new ArrayList<>();
+            
+            if( actions.size() > 2 )
+            {
+            	//if no actions have been made yet but it's my turn -> I am the first player to make a move
+            	_isStartPlayer = true;
+            }
+            
+            for( int i = 2; i < items.length; i++ )
+            {
+                String item = items[i];
+                String[] subitems = item.split(":");
+                String player = subitems[0];
+                String action = subitems[1];    //first subitem is player number
+                actions.add(action);
+                
+                if( i == 2 && player == String.valueOf(_playerNumber) )
+                {
+                	_isStartPlayer = true;
+                }
+            }           
+            
+            //fill gridArray with actions
+            //start with correct player number
+            int playerNumber = 1;
+            if( _isStartPlayer )
+            {
+            	playerNumber = _playerNumber;
+            }
+            else
+            {
+            	if( _playerNumber == 1)
+            	{
+            		playerNumber = 2;
+            	}
+            	else
+            	{
+            		playerNumber = 1;
+            	}
+            }
+            
+            for( int i = 0; i < actions.size(); i++ )
+            {
+                int col = AITools.actionToColumn(actions.get(i));
+                int row = AITools.GRID_ROWS-1;      //start at the bottom
+                //work your way up until you hit an empty space
+                int gridIndex = AITools.coordsToIndex(col, row);
+                
+                try
+                {
+                    while( grid[gridIndex] != 0 )
+                    {
+                        row--;
+                        gridIndex = AITools.coordsToIndex(col, row);
+                    }
+                }
+                catch(ArrayIndexOutOfBoundsException ex)
+                {
+                    System.err.println("Impossible action found: " + ex);
+                    return null;
+                }
+                
+                grid[gridIndex] = playerNumber;
+                playerNumber++;
+                if( playerNumber > 2 )
+                {
+                    playerNumber = 1;
+                }
+            }
+            
+            return grid;
+        }
+        
+        
 
 	private Boolean requestNewMatch()
 	{
-		URL u = URLCreator.getRequestMatchURL(_playerName);
-		if (u == null )
-		{
-			System.err.println("Error! could not create request url!");
-			return false;
-		}
+            URL u = URLCreator.getRequestMatchURL(_playerName);
+            if (u == null )
+            {
+                    System.err.println("Error! could not create request url!");
+                    return false;
+            }
 		
 	    String r = "";
 	    
-		try 
-		{
-			r = new Scanner( u.openStream() ).useDelimiter( "\\Z" ).next();
-		} 
-		catch (IOException e) 
-		{
-			e.printStackTrace();
-			return false;
-		}
+            try 
+            {
+                    r = new Scanner( u.openStream() ).useDelimiter( "\\Z" ).next();
+            } 
+            catch (IOException e) 
+            {
+                    e.printStackTrace();
+                    return false;
+            }
 		
 	    System.out.println( "requestNewMatch: received answer:" + r );
 	    
@@ -133,27 +252,25 @@ public class AIContainer {
 	
 	private String requestMatchStatus()
 	{
-		URL u = URLCreator.getRequestMatchStatusURL(_matchID);
-		if( u == null )
-		{
-			return "error";
-		}
+            URL u = URLCreator.getRequestMatchStatusURL(_matchID);
+            if( u == null )
+            {
+                    return "error";
+            }
+
+            String r = "";
+
+            try 
+            {
+                    r = new Scanner( u.openStream() ).useDelimiter( "\\Z" ).next();
+            } 
+            catch (IOException e) 
+            {
+                    e.printStackTrace();
+                    return "error";
+            }
 		
-		String r = "";
-	    
-		try 
-		{
-			r = new Scanner( u.openStream() ).useDelimiter( "\\Z" ).next();
-		} 
-		catch (IOException e) 
-		{
-			e.printStackTrace();
-			return "error";
-		}
-		
-	    System.out.println( "requestMatchStatus: received answer:" + r );
-            
-            visualizeGrid(r);
+	    //System.out.println( "requestMatchStatus: received answer:" + r );
 	    
 	    return r;		
 	}
@@ -161,23 +278,23 @@ public class AIContainer {
 	
 	private String postAction(String action_)
 	{
-		URL u = URLCreator.getPostActionURL(_matchID, _playerName, _token, action_);
-		if( u == null )
-		{
-			return "error";
-		}
-		
-		String r = "";
-	    
-		try 
-		{
-			r = new Scanner( u.openStream() ).useDelimiter( "\\Z" ).next();
-		} 
-		catch (IOException e) 
-		{
-			e.printStackTrace();
-			return "error";
-		}
+            URL u = URLCreator.getPostActionURL(_matchID, _playerName, _token, action_);
+            if( u == null )
+            {
+                    return "error";
+            }
+
+            String r = "";
+
+            try 
+            {
+                    r = new Scanner( u.openStream() ).useDelimiter( "\\Z" ).next();
+            } 
+            catch (IOException e) 
+            {
+                    e.printStackTrace();
+                    return "error";
+            }
 		
 	    System.out.println( "postAction: received answer:" + r );
 		return r;
@@ -213,7 +330,7 @@ public class AIContainer {
 		return false;
 	}
 
-	private boolean isGameWon(String answer_) {
+	private int isGameWon(String answer_) {
             String[] items = answer_.split(";");
             String status = items[0];
             
@@ -221,129 +338,44 @@ public class AIContainer {
             
             if( last3Letters.equals("won") )
             {
-                    return true;
-            }
-		
-            return false;
-	}
-
-    private void visualizeGrid(String r) {
-        // create GridArray
-        
-        String[] items = r.split(";");
-        
-        //first item is match status, second item is player names
-        //parse only actions
-        ArrayList<String> actions = new ArrayList<>();
-        for( int i = 2; i < items.length; i++ )
-        {
-            String item = items[i];
-            String[] subitems = item.split(":");
-            String player = subitems[0];
-            String action = subitems[1];    //first subitem is player number
-            actions.add(action);
-        }
-        
-        //create gridArray from actions
-        String[] gridArray = new String[GRID_COLUMNS * GRID_ROWS];
-        for( int i = 0; i < gridArray.length; i++ )
-        {
-            gridArray[i] = "-"; //initialize empty fields with "-"
-        }
-        
-        //fill gridArray with actions
-        int playerIndex = 0;
-        for( int i = 0; i < actions.size(); i++ )
-        {
-            int col = actionToColumn(actions.get(i));
-            int row = GRID_ROWS-1;      //start at the bottom
-            //work your way up until you hit an empty space
-            int gridIndex = coordsToIndex(col, row);
-            
-            try
-            {
-                while( !gridArray[gridIndex].equalsIgnoreCase("-") )
+                //System.out.println(status);
+                String winPlayerName = status.substring("player ".length(), status.length()-4);
+                
+                //return correct player number
+                if( winPlayerName.equals(_playerName) )
                 {
-                    row--;
-                    gridIndex = coordsToIndex(col, row);
+                	return _playerNumber;
+                }
+                else		//opponent has won, so, which number does he have?
+                {
+                	if( _playerNumber == 1 )
+                	{
+                		return 2;
+                	}
+                	else
+                	{
+                		return 1;
+                	}
                 }
             }
-            catch(ArrayIndexOutOfBoundsException ex)
-            {
-                System.err.println("Impossible action found: " + ex);
-                return;
-            }
-            
-            String player1Symbol = "X";
-            String player2Symbol = "0";
-            
-            gridArray[gridIndex] = playerIndex == 0 ? player1Symbol : player2Symbol;
-            playerIndex++;
-            if( playerIndex > 1 )
-            {
-                playerIndex = 0;
-            }
-        }
+		
+            return 0;
+	}
+
+    private void visualizeGrid(int[] grid_) {        
         
         //print GridArray
         int col = 0;
-        for( int i = 0; i < gridArray.length; i++ )
+        for( int i = 0; i < grid_.length; i++ )
         {
-            System.out.print("" + gridArray[i]);
+            System.out.print("" + grid_[i]);
             col++;
-            if( col >= GRID_COLUMNS )
+            if( col >= AITools.GRID_COLUMNS )
             {
                 System.out.print("\n");
                 col = 0;
             }
         }
         System.out.print("\n\n");
-    }
-    
-    private int actionToColumn(String action)
-    {
-        if( action.equalsIgnoreCase("a") )
-        {
-            return 0;
-        }
-        else if( action.equalsIgnoreCase("b") )
-        {
-            return 1;
-        }
-        else if( action.equalsIgnoreCase("c") )
-        {
-            return 2;
-        }
-        else if( action.equalsIgnoreCase("d") )
-        {
-            return 3;
-        }
-        else if( action.equalsIgnoreCase("e") )
-        {
-            return 4;
-        }
-        else if( action.equalsIgnoreCase("f") )
-        {
-            return 5;
-        }
-        else if( action.equalsIgnoreCase("g") )
-        {
-            return 6;
-        }
-        
-        return -1;
-    }
-    
-    private Point indexToCoords(int index)
-    {
-        int x = index % GRID_COLUMNS;
-        int y = index / GRID_COLUMNS;
-        
-        return new Point(x, y);
-    }
-    
-    private int coordsToIndex(int x, int y)
-    {
-        return x + (y * GRID_COLUMNS);
     }
 }

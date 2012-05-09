@@ -1,10 +1,18 @@
 package de.cloudarts.aibattleai;
 
+import java.util.ArrayList;
+import java.util.Date;
+
 public class AIPitbull1 extends AIPitbull0 implements IAIProfile {
+	
+	private static long situations = 0;
+	private static long situationsLogCounter = 0;
+	private static int playerNumber = 0;
+	private static Situation bestSituation = null;
 
 	@Override
 	public String getProfileName() {
-		return "Pitbull Adam";
+		return "Pitbull_Adam";
 	}
 
 
@@ -13,24 +21,181 @@ public class AIPitbull1 extends AIPitbull0 implements IAIProfile {
 		
 		String ret = computeRandomAction();	// as fallback, make a random move
 		
-		//now try to come up with something more clever
+		playerNumber = _playerNumber;
 		
-		//find longest row of your pieces
-		int longestRowNumPieces = 0;
-		int longestRowEndingPiece = -1;
-		int longestRowDirection = -1;
-		for( int i = 0; i < grid.length; i++ )
-		{
-			if( grid[i] == _playerNumber )
-			{
-				
+		//now try to come up with something more clever
+		long startTime = new Date().getTime();
+		situations = 0;
+		IAICallback logCallBack = new IAICallback() {
+			
+			@Override
+			public void callback(String message) {
+				System.out.println(message);				
 			}
-		}
-		if( longestRowNumPieces > 0 )
+		};
+		int opponentNumber = playerNumber -1;
+		if( opponentNumber == 0 )
 		{
-			//try to set a stone next to this one in the same direction
+			opponentNumber = 2;
+		}
+		Situation rootSituation = new Situation(-1, opponentNumber, grid, 0, null);
+		bestSituation = rootSituation;	//may never be null!
+		rootSituation.callback = logCallBack;
+		rootSituation.computeNextSituations(7);
+		long timePassed = new Date().getTime() - startTime;
+		double seconds = (double)timePassed/1000.0;
+		double sps = (double)situations / seconds;
+		System.out.println("computed " + situations + " situation in " + timePassed + "ms: " + sps + " situations per second.");
+		
+		//found something!
+		if( bestSituation._followingSituationsAreWins != 0 )
+		{
+			ret = getNextStepToSituation(bestSituation);
 		}
 		
 		return ret;
+	}
+	
+	private String getNextStepToSituation(Situation situation_) {
+		System.out.println("retrieving first step to win...");
+		int lastStepRecorded = -1;
+				
+		while( situation_._situationBefore != null )
+		{
+			lastStepRecorded = situation_._actionLedToThisSituation;
+			situation_ = situation_._situationBefore;
+			System.out.println("going one step back...");
+		}
+		
+		return AITools.columnToAction(lastStepRecorded);
+	}
+
+	/**
+	 * a situation can be given a callback objection to print every now and then something to System.out
+	 * @author wojciech
+	 *
+	 */
+	private static interface IAICallback
+	{
+		public void callback(String message);
+	}
+	
+	protected static class Situation
+	{
+		public int[] _grid;
+		
+		public int _score = 0;	// score after evaluation of this situation
+		
+		public int _actionLedToThisSituation = -1;
+		
+		public int _playerNumberMadeThisMove = 0;
+		
+		public ArrayList<Situation> _nextSituations = null;
+		
+		public IAICallback callback = null;
+		
+		//for score evaluation
+		public Situation _situationBefore = null;
+		public int _followingSituationsAreWins = 0;
+		public int _followingSituationsAreLosses = 0;
+		
+		
+		
+		/**
+		 * in the tree, which row are you in? 0 = root situation
+		 */
+		public int _order = 0;
+		
+		public Situation(int actionLedToThisSituation_, int playerNumberMadeThisMove_, int[] grid_, int order_, Situation parentSituation_)
+		{
+			_order = order_;
+			_grid = grid_;
+			_actionLedToThisSituation = actionLedToThisSituation_;
+			_playerNumberMadeThisMove = playerNumberMadeThisMove_;
+			_situationBefore = parentSituation_;
+			_score = 0;
+			AIPitbull1.situations++;
+			situationsLogCounter++;
+			
+			if( situationsLogCounter >= 1000000 )
+			{
+				situationsLogCounter = 0;
+
+				System.out.println("situations: " + situations);
+			}
+		}
+		
+		public void computeNextSituations(int maxOrder_)
+		{
+			if( _order >= maxOrder_ )
+			{
+				return;
+			}
+			
+			int nextPlayer = _playerNumberMadeThisMove == 1 ? 2 : 1;
+			
+			//check all possible actions
+			for( int col = 0; col < AITools.GRID_COLUMNS; col++ )
+			{
+				if( callback != null )
+				{
+					callback.callback("beginning col " + col);
+				}
+				
+				//next free row for this column
+				int nextFreeIndex = AITools.coordsToIndex(col, AITools.GRID_ROWS-1);
+				while( _grid[nextFreeIndex] != 0  )
+				{
+					nextFreeIndex = AITools.getGridIndexOnTopOf(nextFreeIndex);
+					if( nextFreeIndex < 0)	//can't throw in this row. no possible situation
+					{
+						break;
+					}
+				}
+				if( nextFreeIndex < 0)	//can't throw in this row. no possible situation
+				{
+					continue;
+				}
+				
+				//copy grid and apply new action
+				int[] newGrid = _grid.clone();
+				newGrid[nextFreeIndex] = nextPlayer;
+				
+				if( _nextSituations == null )
+				{
+					_nextSituations = new ArrayList<Situation>();
+				}
+				Situation newSituation = new Situation(col, nextPlayer, newGrid, _order+1, this);
+				_nextSituations.add(newSituation);
+				newSituation._score = 0;
+				
+				int gameStatus = AITools.getGameStatus(newGrid);
+				
+				//compute follow Situations only if not a an end point
+				if( gameStatus == -1)
+				{
+					newSituation.computeNextSituations(maxOrder_);
+				}		
+				else if( gameStatus == playerNumber)
+				{
+					this._followingSituationsAreWins++;
+					
+					if( this._followingSituationsAreWins > bestSituation._followingSituationsAreWins )
+					{
+						bestSituation = this;
+						System.out.println("new best Situation with " + bestSituation._followingSituationsAreWins + " win chances with one piece.");
+						AITools.visualizeGrid(newGrid);
+					}
+					
+				}
+				else if( gameStatus != 0)		//not draw game -> opponent wins
+				{
+					this._followingSituationsAreLosses++;
+					
+					//System.out.println("found situation with score: " + newSituation._score);
+					//AITools.visualizeGrid(newGrid);
+				}
+			}
+		}
 	}
 }

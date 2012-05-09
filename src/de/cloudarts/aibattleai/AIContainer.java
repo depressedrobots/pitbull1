@@ -45,7 +45,7 @@ public class AIContainer {
 			// get game status
             int[] grid = createGrid(lastGameStatusAnswerString);
             
-            visualizeGrid(grid);
+            AITools.visualizeGrid(grid);
 			
 			if( isErrorAnswer(lastGameStatusAnswerString) )
 			{
@@ -302,7 +302,7 @@ public class AIContainer {
 	
 	private Boolean isItMyTurn(String rawStatusString_)
 	{
-		String currentTurnPlayer = rawStatusString_.substring(0, _playerName.length());
+		String currentTurnPlayer = rawStatusString_.split(";")[0];
 		if( currentTurnPlayer.equals(_playerName) )
 		{
 			return true;
@@ -362,20 +362,5 @@ public class AIContainer {
             return 0;
 	}
 
-    private void visualizeGrid(int[] grid_) {        
-        
-        //print GridArray
-        int col = 0;
-        for( int i = 0; i < grid_.length; i++ )
-        {
-            System.out.print("" + grid_[i]);
-            col++;
-            if( col >= AITools.GRID_COLUMNS )
-            {
-                System.out.print("\n");
-                col = 0;
-            }
-        }
-        System.out.print("\n\n");
-    }
+    
 }

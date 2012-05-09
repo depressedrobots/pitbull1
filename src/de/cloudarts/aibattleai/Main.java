@@ -17,7 +17,7 @@ public class Main {
 		//load all profiles
 		IAIProfile[] profiles = { new AIPitbull0(), new AIPitbull1() };		
 		
-		int profileIndex = 0;
+		int profileIndex = 1;
 		
 		if (args.length > 0)
 		{
@@ -27,6 +27,8 @@ public class Main {
 				profileIndex = 0;
 			}
 		}
+		
+		System.out.println("starting with "+ profiles[profileIndex].getProfileName());
 		
 		AIContainer ai = new AIContainer(profiles[profileIndex]);
 		ai.start();

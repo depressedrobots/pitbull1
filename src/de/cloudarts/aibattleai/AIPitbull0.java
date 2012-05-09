@@ -11,7 +11,7 @@ public class AIPitbull0 implements IAIProfile {
 
 	@Override
 	public String getProfileName() {
-		return "Pitbull 0";
+		return "Pitbull_0";
 	}
 
 	@Override

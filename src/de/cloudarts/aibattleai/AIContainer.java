@@ -36,11 +36,20 @@ public class AIContainer {
 			return;
 		}
 		
+		String gameStatusFromLastLoop = "";
+		
 		// actual game loop
 		while(true)
 		{
 			//get game status
 			String lastGameStatusAnswerString = requestMatchStatus();
+			if( lastGameStatusAnswerString.equals(gameStatusFromLastLoop))
+			{
+				System.out.print(".");
+				continue;
+			}
+			
+			gameStatusFromLastLoop = lastGameStatusAnswerString;
 			
 			// get game status
             int[] grid = createGrid(lastGameStatusAnswerString);

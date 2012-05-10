@@ -62,6 +62,7 @@ public class AIPitbull1 extends AIPitbull0 implements IAIProfile {
 		return ret;
 	}
 	
+	//what's the first step from now to get to bestSituation?
 	private String getNextStepToSituation(Situation situation_) {
 		System.out.println("retrieving first step to win...");
 		int lastStepRecorded = -1;
@@ -199,6 +200,12 @@ public class AIPitbull1 extends AIPitbull0 implements IAIProfile {
 					
 					if( bestSituation._parentSituation == null || this._followingSituationsAreWins > bestSituation._parentSituation._followingSituationsAreWins )
 					{
+						//safety check: up to that situation, there may be no situation where the opponent has a winning chance!
+						if( !thereIsASafePathToWin(newSituation))
+						{
+							continue;
+						}
+						
 						bestSituation = newSituation;
 						System.out.println("new best Situation with " + this._followingSituationsAreWins + " win chances with one piece.");
 						AITools.visualizeGrid(newGrid);
@@ -213,6 +220,21 @@ public class AIPitbull1 extends AIPitbull0 implements IAIProfile {
 					//AITools.visualizeGrid(newGrid);
 				}
 			}
+		}
+
+		private boolean thereIsASafePathToWin(Situation situation) {
+			
+			while(situation._parentSituation != null )
+			{
+				situation = situation._parentSituation;
+				if( situation._followingSituationsAreLosses != 0 )
+				{
+					//at this point, the opponent can win the game with the next move
+					return false;
+				}
+			}
+			
+			return true;
 		}
 	}
 }

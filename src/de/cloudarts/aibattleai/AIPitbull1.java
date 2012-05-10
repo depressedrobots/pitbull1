@@ -19,7 +19,7 @@ public class AIPitbull1 extends AIPitbull0 implements IAIProfile {
 	@Override
 	public String getNextAction(int[] grid, int _playerNumber) {
 		
-		String ret = computeRandomAction();	// as fallback, make a random move
+		String ret = "X";	// as fallback, make a random move
 		
 		playerNumber = _playerNumber;
 		
@@ -48,10 +48,16 @@ public class AIPitbull1 extends AIPitbull0 implements IAIProfile {
 		System.out.println("computed " + situations + " situation in " + timePassed + "ms: " + sps + " situations per second.");
 		
 		//found something!
-		if( bestSituation._followingSituationsAreWins != 0 )
+		if( bestSituation._parentSituation._followingSituationsAreWins != 0 )
 		{
 			ret = getNextStepToSituation(bestSituation);
 		}
+		else
+		{
+			System.out.println("Couldn't find any good moves... spamming random move.");
+			ret = computeRandomAction();
+		}
+		
 		
 		return ret;
 	}
@@ -178,6 +184,9 @@ public class AIPitbull1 extends AIPitbull0 implements IAIProfile {
 				}		
 				else if( gameStatus == playerNumber)
 				{
+					
+					this._followingSituationsAreWins++;
+					
 					//check: if this situation has the order 1 (next move) and is a win, then take it!
 					if( newSituation._order == 1 )
 					{
@@ -187,8 +196,6 @@ public class AIPitbull1 extends AIPitbull0 implements IAIProfile {
 						
 						break;
 					}
-					
-					this._followingSituationsAreWins++;
 					
 					if( bestSituation._parentSituation == null || this._followingSituationsAreWins > bestSituation._parentSituation._followingSituationsAreWins )
 					{

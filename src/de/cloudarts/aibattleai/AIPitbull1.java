@@ -5,7 +5,7 @@ import java.util.Date;
 
 public class AIPitbull1 extends AIPitbull0 implements IAIProfile {
 	
-	private static final int TREE_DEPTH = 8;
+	private static final int TREE_DEPTH = 9;
 	private static long situations = 0;
 	private static long situationsLogCounter = 0;
 	private static int playerNumber = 0;
@@ -49,7 +49,7 @@ public class AIPitbull1 extends AIPitbull0 implements IAIProfile {
 		System.out.println("computed " + situations + " situation in " + timePassed + "ms: " + sps + " situations per second.");
 		
 		//found something!
-		if( bestSituation._parentSituation._followingSituationsAreWins != 0 )
+		if( bestSituation._parentSituation != null && bestSituation._parentSituation._followingSituationsAreWins != 0 )
 		{
 			ret = getNextStepToSituation(bestSituation);
 		}

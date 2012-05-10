@@ -5,6 +5,7 @@ import java.util.Date;
 
 public class AIPitbull1 extends AIPitbull0 implements IAIProfile {
 	
+	private static final int TREE_DEPTH = 8;
 	private static long situations = 0;
 	private static long situationsLogCounter = 0;
 	private static int playerNumber = 0;
@@ -41,7 +42,7 @@ public class AIPitbull1 extends AIPitbull0 implements IAIProfile {
 		Situation rootSituation = new Situation(-1, opponentNumber, grid, 0, null);
 		bestSituation = rootSituation;	//may never be null!
 		rootSituation.callback = logCallBack;
-		rootSituation.computeNextSituations(7);
+		rootSituation.computeNextSituations(TREE_DEPTH);
 		long timePassed = new Date().getTime() - startTime;
 		double seconds = (double)timePassed/1000.0;
 		double sps = (double)situations / seconds;

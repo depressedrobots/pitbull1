@@ -5,7 +5,7 @@ import java.util.Date;
 
 public class AIPitbull1 extends AIPitbull0 implements IAIProfile {
 	
-	private static final int TREE_DEPTH = 8;
+	private static final int TREE_DEPTH = 7;
 	private static long situations = 0;
 	private static long situationsLogCounter = 0;
 	private static int playerNumber = 0;

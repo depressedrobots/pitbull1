@@ -48,6 +48,7 @@ public class AIContainer {
 				System.out.print(".");
 				continue;
 			}
+			System.out.print("\n");
 			
 			gameStatusFromLastLoop = lastGameStatusAnswerString;
 			
@@ -102,6 +103,7 @@ public class AIContainer {
 			postAction(action);
 			
 			// continue in loop
+			gameStatusFromLastLoop = "";
 		}
 	}
         

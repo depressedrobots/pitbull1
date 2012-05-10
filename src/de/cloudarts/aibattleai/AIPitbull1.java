@@ -60,10 +60,10 @@ public class AIPitbull1 extends AIPitbull0 implements IAIProfile {
 		System.out.println("retrieving first step to win...");
 		int lastStepRecorded = -1;
 				
-		while( situation_._situationBefore != null )
+		while( situation_._parentSituation != null )
 		{
 			lastStepRecorded = situation_._actionLedToThisSituation;
-			situation_ = situation_._situationBefore;
+			situation_ = situation_._parentSituation;
 			System.out.println("going one step back...");
 		}
 		
@@ -95,7 +95,7 @@ public class AIPitbull1 extends AIPitbull0 implements IAIProfile {
 		public IAICallback callback = null;
 		
 		//for score evaluation
-		public Situation _situationBefore = null;
+		public Situation _parentSituation = null;
 		public int _followingSituationsAreWins = 0;
 		public int _followingSituationsAreLosses = 0;
 		
@@ -112,7 +112,7 @@ public class AIPitbull1 extends AIPitbull0 implements IAIProfile {
 			_grid = grid_;
 			_actionLedToThisSituation = actionLedToThisSituation_;
 			_playerNumberMadeThisMove = playerNumberMadeThisMove_;
-			_situationBefore = parentSituation_;
+			_parentSituation = parentSituation_;
 			_score = 0;
 			AIPitbull1.situations++;
 			situationsLogCounter++;
@@ -178,12 +178,22 @@ public class AIPitbull1 extends AIPitbull0 implements IAIProfile {
 				}		
 				else if( gameStatus == playerNumber)
 				{
+					//check: if this situation has the order 1 (next move) and is a win, then take it!
+					if( newSituation._order == 1 )
+					{
+						bestSituation = newSituation;
+						System.out.println("TAKE THE WIN: next move will finish match!");
+						AITools.visualizeGrid(newGrid);
+						
+						break;
+					}
+					
 					this._followingSituationsAreWins++;
 					
-					if( this._followingSituationsAreWins > bestSituation._followingSituationsAreWins )
+					if( bestSituation._parentSituation == null || this._followingSituationsAreWins > bestSituation._parentSituation._followingSituationsAreWins )
 					{
-						bestSituation = this;
-						System.out.println("new best Situation with " + bestSituation._followingSituationsAreWins + " win chances with one piece.");
+						bestSituation = newSituation;
+						System.out.println("new best Situation with " + this._followingSituationsAreWins + " win chances with one piece.");
 						AITools.visualizeGrid(newGrid);
 					}
 					

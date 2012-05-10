@@ -1,1 +1,1 @@
-FOR %%A IN (1 2 3 4 5 6 7 8 9 10) DO java -jar pitbull.jar 0
+FOR %%A IN (1 2 3 4 5 6 7 8 9 10) DO java -Xms512m -Xmx1g -jar pitbull.jar 0
